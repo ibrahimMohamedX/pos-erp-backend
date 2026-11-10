@@ -1,0 +1,84 @@
+{
+  "info": {
+    "name": "POS/ERP Backend",
+    "description": "Legacy-compatible backend for Flutter POS/ERP app",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        { "name": "Login", "request": { "method": "POST", "url": "{{base}}/auth/login", "header": [{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"email\":\"admin@demo.local\",\"password\":\"Admin123!\"}" } } },
+        { "name": "Logout", "request": { "method": "POST", "url": "{{base}}/auth/logout", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}] } },
+        { "name": "Check Company PIN", "request": { "method": "POST", "url": "{{base}}/check/company/pin", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "body": { "mode": "raw", "raw": "{\"pin_code\":\"1234\"}" } } },
+        { "name": "Add Company PIN", "request": { "method": "POST", "url": "{{base}}/add/company/pin", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "body": { "mode": "raw", "raw": "{\"pin_code\":\"1234\"}" } } }
+      ]
+    },
+    {
+      "name": "Catalog",
+      "item": [
+        { "name": "Categories (POS)", "request": { "method": "GET", "url": "{{base}}/pos/categories", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Categories (Admin)", "request": { "method": "GET", "url": "{{base}}/pos/products/categories", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Create Category", "request": { "method": "POST", "url": "{{base}}/pos/categories", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"المشويات\"}" } } },
+        { "name": "Prep Stations", "request": { "method": "GET", "url": "{{base}}/pos/products/preparation-stations", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Products List", "request": { "method": "GET", "url": "{{base}}/pos/products/all", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Product Modifiers", "request": { "method": "GET", "url": "{{base}}/pos/products/1/modifiers", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Create Product", "request": { "method": "POST", "url": "{{base}}/pos/products", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"برجر\",\"sale_price\":50,\"category_id\":1}" } } },
+        { "name": "Toggle Product", "request": { "method": "PATCH", "url": "{{base}}/pos/products/1/toggle-active", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Modifier Groups", "request": { "method": "GET", "url": "{{base}}/pos/modifier-groups", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Create Modifier Group", "request": { "method": "POST", "url": "{{base}}/pos/modifier-groups", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"إضافات\",\"is_required\":true,\"items\":[{\"name\":\"جبن\",\"price\":2,\"type\":\"Prep\"}]}" } } }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        { "name": "Add Customer", "request": { "method": "POST", "url": "{{base}}/pos/add-customer", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"first_name\":\"أحمد\",\"mobile\":\"01000000000\"}" } } },
+        { "name": "Send to Kitchen", "request": { "method": "POST", "url": "{{base}}/pos/send-to-kitchen", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Idempotency-Key", "value": "ord-001"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"type\":\"dine_in\",\"items\":[{\"product_id\":1,\"quantity\":2,\"modifiers\":[{\"id\":1,\"quantity\":1}]}]}" } } },
+        { "name": "Update Kitchen Order", "request": { "method": "PUT", "url": "{{base}}/pos/update-kitchen-order", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"order_id\":1,\"items\":[{\"product_id\":1,\"quantity\":3}]}" } } },
+        { "name": "Checkout", "request": { "method": "POST", "url": "{{base}}/pos/checkout", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"order_id\":1,\"payments\":[{\"method\":\"cash\",\"amount\":240}]}" } } },
+        { "name": "Order Status", "request": { "method": "POST", "url": "{{base}}/pos/orders/status", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"id\":1,\"status\":\"closed\"}" } } },
+        { "name": "Orders List", "request": { "method": "GET", "url": "{{base}}/pos/orders?status=closed", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } }
+      ]
+    },
+    {
+      "name": "Sessions",
+      "item": [
+        { "name": "Open Session", "request": { "method": "POST", "url": "{{base}}/pos/sessions", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"opening_cash\":1000}" } } },
+        { "name": "Sessions List", "request": { "method": "GET", "url": "{{base}}/pos/sessions", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Session Detail", "request": { "method": "GET", "url": "{{base}}/pos/report/close-out?session_id=1", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "End Day", "request": { "method": "POST", "url": "{{base}}/pos/report/end-day", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"session_id\":1}" } } }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        { "name": "Inventory Dashboard", "request": { "method": "GET", "url": "{{base}}/inventory/dashboard", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Items", "request": { "method": "GET", "url": "{{base}}/inventory/items", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Adjust Stock", "request": { "method": "POST", "url": "{{base}}/inventory/adjustment", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"item_id\":1,\"adjustment_type\":\"increase\",\"quantity\":5}" } } },
+        { "name": "Purchase Order", "request": { "method": "POST", "url": "{{base}}/inventory/purchase-orders", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"items\":[{\"item_id\":1,\"quantity_ordered\":10,\"unit_cost\":5}]}" } } },
+        { "name": "Categories/Suppliers/Units", "request": { "method": "GET", "url": "{{base}}/inventory/categories", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } }
+      ]
+    },
+    {
+      "name": "KDS",
+      "item": [
+        { "name": "KDS Dashboard", "request": { "method": "GET", "url": "{{base}}/kds/dashboard", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "KDS Tickets", "request": { "method": "GET", "url": "{{base}}/kds/tickets", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Ticket Action", "request": { "method": "PATCH", "url": "{{base}}/kds/tickets/1/action", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"action\":\"start\"}" } } }
+      ]
+    },
+    {
+      "name": "Reports & Shifts & Attendance",
+      "item": [
+        { "name": "POS Dashboard", "request": { "method": "GET", "url": "{{base}}/reports/pos-dashboard", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Sales Report", "request": { "method": "GET", "url": "{{base}}/pos/salesReport", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Z-Report PDF", "request": { "method": "GET", "url": "{{base}}/reports/z-report/pdf", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Shift Dashboard", "request": { "method": "GET", "url": "{{base}}/shifts/control/dashboard", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Close Shift", "request": { "method": "POST", "url": "{{base}}/shifts/close?shift_id=1", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"actual_cash_count\":520}" } } },
+        { "name": "Attendance Status", "request": { "method": "GET", "url": "{{base}}/attendance/status", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Clock In", "request": { "method": "POST", "url": "{{base}}/attendance/clock-in", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } },
+        { "name": "Clock Out", "request": { "method": "POST", "url": "{{base}}/attendance/clock-out", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}] } }
+      ]
+    }
+  ]
+}

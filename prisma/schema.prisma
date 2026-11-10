@@ -1,0 +1,675 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  owner
+  admin
+  manager
+  cashier
+  kitchen
+  waiter
+}
+
+enum OrderStatus {
+  open
+  hand_over
+  closed
+  cancelled
+}
+
+enum OrderType {
+  dine_in
+  takeaway
+  delivery
+  call_in
+}
+
+enum ModifierType {
+  Prep
+  Addon
+}
+
+enum SessionStatus {
+  open
+  closed
+}
+
+enum PurchaseStatus {
+  draft
+  ordered
+  received
+  cancelled
+}
+
+enum KdsTicketStatus {
+  pending
+  in_progress
+  ready
+  served
+  paused
+}
+
+enum AdjustmentType {
+  increase
+  decrease
+  set
+}
+
+enum InventoryItemStatus {
+  active
+  inactive
+  discontinued
+}
+
+enum CustomerType {
+  walk_in
+  regular
+  vip
+  delivery
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  avatar       String?
+  lang         String   @default("ar")
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  companies     UserCompany[]
+  authSessions  AuthSession[]
+  posSessions   PosSession[]
+  sessionCashiers SessionCashier[]
+  createdOrders Order[]       @relation("OrderCreator")
+  shifts        Shift[]       @relation("ShiftCashier")
+  attendance    AttendanceRecord[]
+  adjustments   InventoryAdjustment[]
+}
+
+model UserCompany {
+  userId    Int
+  companyId Int
+  role      Role    @default(cashier)
+  isDefault Boolean @default(false)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@index([companyId])
+}
+
+model AuthSession {
+  id             Int       @id @default(autoincrement())
+  userId         Int
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  pinCode   String?
+  taxRate   Decimal  @default(0) @db.Decimal(5, 2)
+  currency  String   @default("EGP")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users          UserCompany[]
+  branches       Branch[]
+  categories     Category[]
+  products       Product[]
+  modifierGroups ModifierGroup[]
+  customers      Customer[]
+  orders         Order[]
+  posSessions    PosSession[]
+  shifts         Shift[]
+  inventoryItems InventoryItem[]
+  inventoryCategories InventoryCategory[]
+  suppliers      Supplier[]
+  units          Unit[]
+  adjustments    InventoryAdjustment[]
+  purchaseOrders PurchaseOrder[]
+  kdsStations    KdsStation[]
+  kdsTickets     KdsTicket[]
+  printers       Printer[]
+  attendance     AttendanceRecord[]
+}
+
+model Branch {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  name      String
+  address   String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  posSessions PosSession[]
+  shifts     Shift[]
+
+  @@index([companyId])
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  name      String
+  nameAr    String?
+  imageUrl  String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products       Product[] @relation("Category")
+  subCategoryOf  Product[] @relation("SubCategory")
+
+  @@index([companyId, sortOrder])
+}
+
+model KdsStation {
+  id             Int      @id @default(autoincrement())
+  companyId      Int
+  name           String
+  nameAr         String?
+  displayOrder   Int      @default(0)
+  isActive       Boolean  @default(true)
+  ipAddress      String?
+  printerId      Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company    Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  printer    Printer?      @relation(fields: [printerId], references: [id])
+  products   Product[]
+  tickets    KdsTicket[]
+}
+
+model Printer {
+  id               Int      @id @default(autoincrement())
+  companyId        Int
+  name             String
+  type             String?
+  ipAddress        String?
+  port             Int?
+  macAddress       String?
+  paperWidth       Int      @default(80)
+  isDefaultReceipt Boolean  @default(false)
+  isDefaultKitchen Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  company    Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  kdsStations KdsStation[]
+}
+
+model Product {
+  id                   Int      @id @default(autoincrement())
+  companyId            Int
+  categoryId           Int?
+  subCategoryId        Int?
+  name                 String
+  nameAr               String?
+  description          String?
+  sku                  String?
+  barcode              String?
+  salePrice            Decimal  @db.Decimal(12, 2)
+  costPrice            Decimal? @db.Decimal(12, 2)
+  proImageUrl          String?
+  isStock              Boolean  @default(true)
+  stockQuantity        Decimal  @default(0) @db.Decimal(12, 3)
+  lowStockThreshold    Decimal  @default(10) @db.Decimal(12, 3)
+  isActive             Boolean  @default(true)
+  preparationStationId Int?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category            Category?            @relation("Category", fields: [categoryId], references: [id])
+  subCategory         Category?            @relation("SubCategory", fields: [subCategoryId], references: [id])
+  preparationStation  KdsStation?          @relation(fields: [preparationStationId], references: [id])
+  modifierLinks       ProductModifierGroup[]
+  orderItems          OrderItem[]
+  kdsTicketItems      KdsTicketItem[]
+
+  @@unique([companyId, sku])
+  @@index([companyId, categoryId])
+  @@index([companyId, isActive])
+}
+
+model ModifierGroup {
+  id           Int      @id @default(autoincrement())
+  companyId    Int
+  name         String
+  nameAr       String?
+  isRequired   Boolean  @default(false)
+  minSelection Int      @default(0)
+  maxSelection Int      @default(1)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items   ModifierItem[]
+  productLinks ProductModifierGroup[]
+
+  @@index([companyId])
+}
+
+model ModifierItem {
+  id              Int          @id @default(autoincrement())
+  modifierGroupId Int
+  name            String
+  nameAr          String?
+  price           Decimal      @default(0) @db.Decimal(12, 2)
+  type            ModifierType @default(Prep)
+  isActive        Boolean      @default(true)
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  modifierGroup ModifierGroup      @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  orderItemModifiers OrderItemModifier[]
+
+  @@index([modifierGroupId, sortOrder])
+}
+
+model ProductModifierGroup {
+  productId       Int
+  modifierGroupId Int
+
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  modifierGroup ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+
+  @@id([productId, modifierGroupId])
+}
+
+model Customer {
+  id           Int          @id @default(autoincrement())
+  companyId    Int
+  firstName    String
+  lastName     String?
+  mobile       String?
+  email        String?
+  customerType CustomerType @default(walk_in)
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orders  Order[]
+
+  @@index([companyId, mobile])
+}
+
+model PosSession {
+  id          Int           @id @default(autoincrement())
+  companyId   Int
+  cashierId   Int
+  branchId    Int?
+  openingCash Decimal       @default(0) @db.Decimal(12, 2)
+  openedAt    DateTime      @default(now())
+  closedAt    DateTime?
+  status      SessionStatus @default(open)
+  shiftCode   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  cashier        User             @relation(fields: [cashierId], references: [id])
+  branch         Branch?          @relation(fields: [branchId], references: [id])
+  sessionCashiers SessionCashier[]
+  orders         Order[]
+  cashDrawer     CashDrawer?
+
+  @@index([companyId, status])
+}
+
+model SessionCashier {
+  id        Int       @id @default(autoincrement())
+  sessionId Int
+  cashierId Int
+  openedAt  DateTime  @default(now())
+  closedAt  DateTime?
+
+  session  PosSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  cashier  User       @relation(fields: [cashierId], references: [id])
+
+  @@index([sessionId])
+}
+
+model CashDrawer {
+  id          Int      @id @default(autoincrement())
+  sessionId   Int      @unique
+  openingCash Decimal  @default(0) @db.Decimal(12, 2)
+  cashPayment Decimal  @default(0) @db.Decimal(12, 2)
+  cashRefund  Decimal  @default(0) @db.Decimal(12, 2)
+  cashIn      Decimal  @default(0) @db.Decimal(12, 2)
+  cashOut     Decimal  @default(0) @db.Decimal(12, 2)
+  drawerTotal Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  session PosSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id               Int          @id @default(autoincrement())
+  companyId        Int
+  sessionId        Int?
+  posDate          DateTime     @db.Date
+  status           OrderStatus  @default(open)
+  type             OrderType?
+  customerId       Int?
+  customerName     String?
+  customerMobile   String?
+  warehouseName    String?
+  subtotal         Decimal      @default(0) @db.Decimal(12, 2)
+  totalTax         Decimal      @default(0) @db.Decimal(12, 2)
+  totalDiscount    Decimal      @default(0) @db.Decimal(12, 2)
+  total            Decimal      @default(0) @db.Decimal(12, 2)
+  payment          Json?
+  printReceiptUrl  String?
+  printKitchenUrl  String?
+  kashierPrintUrl  String?
+  idempotencyKey   String?      @unique
+  version          Int          @default(1)
+  closedAt         DateTime?
+  createdBy        Int?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  company       Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  session       PosSession?         @relation(fields: [sessionId], references: [id])
+  customer      Customer?           @relation(fields: [customerId], references: [id])
+  creator       User?               @relation("OrderCreator", fields: [createdBy], references: [id])
+  items         OrderItem[]
+  kdsTickets    KdsTicket[]
+
+  @@index([companyId, status])
+  @@index([companyId, posDate])
+}
+
+model OrderItem {
+  id          Int             @id @default(autoincrement())
+  orderId     Int
+  productId   Int?
+  productName String
+  quantity    Decimal         @default(1) @db.Decimal(12, 3)
+  unitPrice   Decimal         @db.Decimal(12, 2)
+  totalPrice  Decimal         @db.Decimal(12, 2)
+  discount    Decimal         @default(0) @db.Decimal(12, 2)
+  taxAmount   Decimal         @default(0) @db.Decimal(12, 2)
+  note        String?
+  lineNumber  Int?
+  status      KdsTicketStatus @default(pending)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  order             Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product           Product?            @relation(fields: [productId], references: [id])
+  modifiers         OrderItemModifier[]
+  kdsTicketItems    KdsTicketItem[]
+
+  @@index([orderId, lineNumber])
+}
+
+model OrderItemModifier {
+  id            Int          @id @default(autoincrement())
+  orderItemId   Int
+  modifierItemId Int?
+  modifierName  String
+  modifierPrice Decimal      @db.Decimal(12, 2)
+  quantity      Int          @default(1)
+  type          ModifierType @default(Prep)
+
+  orderItem     OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  modifierItem  ModifierItem? @relation(fields: [modifierItemId], references: [id])
+}
+
+model Shift {
+  id              Int           @id @default(autoincrement())
+  companyId       Int
+  cashierId       Int?
+  branchId        Int?
+  openingCash     Decimal       @default(0) @db.Decimal(12, 2)
+  status          SessionStatus @default(open)
+  openedAt        DateTime      @default(now())
+  closedAt        DateTime?
+  durationSeconds Int?
+  shiftCode       String?
+  expectedCash    Decimal?      @db.Decimal(12, 2)
+  actualCashCount Decimal?      @db.Decimal(12, 2)
+  variance        Decimal?      @db.Decimal(12, 2)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  company    Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  cashier    User?              @relation("ShiftCashier", fields: [cashierId], references: [id])
+  branch     Branch?            @relation(fields: [branchId], references: [id])
+  attendance AttendanceRecord[]
+
+  @@index([companyId, status])
+}
+
+model AttendanceRecord {
+  id                  Int      @id @default(autoincrement())
+  userId              Int
+  companyId           Int
+  date                DateTime @db.Date
+  shiftId             Int?
+  shiftCode           String?
+  clockInTime         DateTime?
+  clockOutTime        DateTime?
+  totalSeconds        Int?
+  workProgressPercent Decimal? @db.Decimal(5, 2)
+  isClockedIn         Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  shift   Shift?  @relation(fields: [shiftId], references: [id])
+
+  @@unique([userId, companyId, date])
+}
+
+model InventoryCategory {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  name      String
+  nameAr    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items   InventoryItem[]
+
+  @@index([companyId])
+}
+
+model Supplier {
+  id            Int      @id @default(autoincrement())
+  companyId     Int
+  name          String
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  inventoryItems InventoryItem[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([companyId])
+}
+
+model Unit {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  name      String
+  shortName String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  inventoryItems InventoryItem[]
+
+  @@index([companyId])
+}
+
+model InventoryItem {
+  id              Int                 @id @default(autoincrement())
+  companyId       Int
+  categoryId      Int?
+  supplierId      Int?
+  unitId          Int?
+  name            String
+  sku             String?
+  barcode         String?
+  costPrice       Decimal?            @db.Decimal(12, 2)
+  salePrice       Decimal?            @db.Decimal(12, 2)
+  currentStock    Decimal             @default(0) @db.Decimal(12, 3)
+  minStockLevel   Decimal             @default(10) @db.Decimal(12, 3)
+  maxStockLevel   Decimal?            @db.Decimal(12, 3)
+  status          InventoryItemStatus @default(active)
+  trackStock      Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  company     Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category    InventoryCategory?    @relation(fields: [categoryId], references: [id])
+  supplier    Supplier?             @relation(fields: [supplierId], references: [id])
+  unit        Unit?                 @relation(fields: [unitId], references: [id])
+  adjustments InventoryAdjustment[]
+  purchaseOrderItems PurchaseOrderItem[]
+
+  @@unique([companyId, sku])
+  @@index([companyId, status])
+}
+
+model InventoryAdjustment {
+  id            Int            @id @default(autoincrement())
+  companyId     Int
+  itemId        Int
+  adjustmentType AdjustmentType
+  quantity      Decimal        @db.Decimal(12, 3)
+  reason        String?
+  referenceType String?
+  referenceId   Int?
+  adjustedBy    Int?
+  createdAt     DateTime       @default(now())
+
+  company    Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  item       InventoryItem @relation(fields: [itemId], references: [id])
+  adjuster   User?         @relation(fields: [adjustedBy], references: [id])
+
+  @@index([companyId, itemId])
+}
+
+model PurchaseOrder {
+  id          Int            @id @default(autoincrement())
+  companyId   Int
+  supplierId  Int?
+  orderNumber String         @unique
+  status      PurchaseStatus @default(draft)
+  orderDate   DateTime       @db.Date
+  expectedDate DateTime?     @db.Date
+  totalAmount Decimal        @default(0) @db.Decimal(12, 2)
+  notes       String?
+  createdBy   Int?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  company Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier Supplier?          @relation(fields: [supplierId], references: [id])
+  items   PurchaseOrderItem[]
+
+  @@index([companyId, status])
+}
+
+model PurchaseOrderItem {
+  id               Int      @id @default(autoincrement())
+  purchaseOrderId  Int
+  itemId           Int?
+  quantityOrdered  Decimal  @db.Decimal(12, 3)
+  quantityReceived Decimal  @default(0) @db.Decimal(12, 3)
+  unitCost         Decimal  @db.Decimal(12, 2)
+  totalCost        Decimal  @db.Decimal(12, 2)
+  createdAt        DateTime @default(now())
+
+  purchaseOrder PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  item          InventoryItem? @relation(fields: [itemId], references: [id])
+}
+
+model KdsTicket {
+  id                        Int             @id @default(autoincrement())
+  companyId                 Int
+  orderId                   Int
+  stationId                 Int?
+  status                    KdsTicketStatus @default(pending)
+  priority                  Int             @default(0)
+  openedAt                  DateTime        @default(now())
+  startedAt                 DateTime?
+  readyAt                   DateTime?
+  servedAt                  DateTime?
+  elapsedSeconds            Int             @default(0)
+  preparationTargetSeconds  Int?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  order   Order       @relation(fields: [orderId], references: [id])
+  station KdsStation? @relation(fields: [stationId], references: [id])
+  items   KdsTicketItem[]
+
+  @@index([companyId, status])
+  @@index([orderId])
+}
+
+model KdsTicketItem {
+  id         Int             @id @default(autoincrement())
+  ticketId   Int
+  orderItemId Int?
+  productId  Int?
+  lineNumber Int?
+  quantity   Decimal         @db.Decimal(12, 3)
+  name       String
+  modifiers  Json?
+  status     KdsTicketStatus @default(pending)
+  note       String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  ticket    KdsTicket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  orderItem OrderItem? @relation(fields: [orderItemId], references: [id])
+  product   Product?   @relation(fields: [productId], references: [id])
+
+  @@index([ticketId])
+}
